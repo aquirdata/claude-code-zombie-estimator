@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Zombie Estimator — Aquire AI</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --slate-950: #07101f;
+      --slate-900: #111e2a;
+      --slate-800: #172336;
+      --slate-750: #1d2d45;
+      --slate-700: #243551;
+      --slate-600: #6a8eb0;
+      --slate-400: #7ea2bc;
+      --slate-300: #ccd8e8;
+      --slate-200: #deeaf8;
+      --blue-600: #12316c;
+      --blue-500: #1b3d76;
+      --blue-400: #5ecece;
+      --blue-300: #35dfe7;
+      --red-500: #e05252;
+      --red-400: #f07878;
+      --amber-400: #e8a83a;
+      --green-400: #3dd6a0;
+      --emerald-500: #2cc89a;
+      --cyan: #35dfe7;
+      --cyan-soft: #5ecece;
+      --font-display: 'Playfair Display', Georgia, serif;
+      --font-sans: 'DM Sans', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    html, body { height: 100%; background: var(--slate-950); }
+    body { font-family: var(--font-sans); color: var(--slate-200); overflow-x: hidden; }
+    #root { min-height: 100vh; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--slate-900); }
+    ::-webkit-scrollbar-thumb { background: var(--slate-700); border-radius: 3px; }
+
+    /* Slider */
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: var(--slate-700);
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--blue-500);
+      box-shadow: 0 0 0 4px rgba(53,223,231,0.12);
+      cursor: pointer;
+      transition: box-shadow 0.2s;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      box-shadow: 0 0 0 7px rgba(53,223,231,0.18);
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      height: 6px; border-radius: 3px;
+    }
+
+    /* Animations */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    @keyframes scanLine { 0% { transform: translateY(-100%); } 100% { transform: translateY(400%); } }
+    @keyframes glitch {
+      0%,100% { clip-path: inset(0 0 100% 0); }
+      10% { clip-path: inset(33% 0 55% 0); transform: translate(-2px,0); }
+      20% { clip-path: inset(70% 0 10% 0); transform: translate(2px,0); }
+      30% { clip-path: inset(10% 0 80% 0); transform: translate(0,0); }
+      40% { clip-path: inset(50% 0 30% 0); transform: translate(-1px,0); }
+      50% { clip-path: inset(0 0 0 0); transform: translate(0,0); }
+    }
+    @keyframes countUp { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes borderPulse {
+      0%,100% { border-color: rgba(53,223,231,0.22); }
+      50% { border-color: rgba(53,223,231,0.6); }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+    @keyframes ripple {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(53,223,231,0.3); }
+      70% { transform: scale(1); box-shadow: 0 0 0 14px rgba(59,130,246,0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .fade-in { animation: fadeIn 0.5s ease forwards; }
+    .slide-up { animation: slideUp 0.6s cubic-bezier(0.16,1,0.3,1) forwards; }
+
+    .shimmer-text {
+      background: linear-gradient(90deg, var(--cyan-soft) 0%, #fff 40%, var(--cyan) 80%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s linear infinite;
+    }
+
+    .grid-bg {
+      background-image:
+        linear-gradient(rgba(53,223,231,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(53,223,231,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    .card-glow { box-shadow: 0 0 0 1px rgba(53,223,231,0.1), 0 20px 60px rgba(0,0,0,0.5); }
+    .card-glow-strong { box-shadow: 0 0 0 1px rgba(53,223,231,0.22), 0 0 40px rgba(53,223,231,0.06), 0 20px 60px rgba(0,0,0,0.6); }
+
+    /* Print styles */
+    @media print {
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { background: #07101f !important; color: #deeaf8 !important; }
+      .no-print { display: none !important; }
+      .print-show { display: block !important; }
+      .print-card { break-inside: avoid; }
+      @page { margin: 16mm 14mm; size: A4; }
+    }
+    .print-header-block { display: none; }
+    @media print { .print-header-block { display: flex !important; } }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+const TWEAK_DEFAULTS = {
+  rateB: 18,
+  rateC: 24,
+  webhookUrl: '',
+  ctaLabel: 'Request 48-Hr Audit Verification',
+};
+
+/* ── helpers ──────────────────────────────────────────────── */
+const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+
+function readURLParams() {
+  const p = new URLSearchParams(window.location.search);
+  return {
+    company: p.get('company') || '',
+    spend: p.get('spend') ? Math.min(100000, Math.max(5000, parseInt(p.get('spend')))) : 25000,
+    series: p.get('series') === 'C' ? 'C' : p.get('series') === 'B' ? 'B' : '',
+  };
+}
+
+function calcReport(company, spend, series, rateB = 18, rateC = 24) {
+  const wasteRate = (series === 'C' ? rateC : rateB) / 100;
+  const annualSpend = spend * 12;
+  const totalWaste = annualSpend * wasteRate;
+
+  const storageLeak    = totalWaste * 0.45;
+  const dataLayerWaste = totalWaste * 0.32;
+  const complianceRisk = totalWaste * 0.16;
+  const networkDrift   = totalWaste * 0.07;
+
+  const modernizationScore = Math.round(100 - (wasteRate * 100) * 1.3 - (series === 'C' ? 3 : 0));
+  const schemaRiskLevel    = series === 'C' ? 'ELEVATED' : 'MODERATE';
+  const complianceLevel    = series === 'C' ? 'HIGH' : 'MEDIUM';
+  const zombieCount        = Math.round(annualSpend / 1200 * (series === 'C' ? 1.4 : 1.0));
+
+  return { wasteRate, annualSpend, totalWaste, storageLeak, dataLayerWaste, complianceRisk, networkDrift, modernizationScore, schemaRiskLevel, complianceLevel, zombieCount, company, spend, series };
+}
+
+/* ── signal data ──────────────────────────────────────────── */
+const SIGNAL_CATEGORIES = [
+  { label: 'Storage',         signals: ['S3 Cold Buckets','Orphaned Snapshots','EBS Volumes Unattached','Glacier Abandoned','GCS Nearline Unused','Blob Stale Containers','Object Lifecycle Gaps','Versioning Overhead'] },
+  { label: 'Compute',         signals: ['Idle EC2 t3.xlarge','Overprovisioned EKS Nodes','Lambda Cold Start Waste','GKE Autopilot Gaps','Reserved Instance Drift','Spot Interruption Orphans','GPU Idle Hours','Fargate Underutil'] },
+  { label: 'Semantic PII',    signals: ['Email Residue Detected','SSN Pattern Found','PHI Marker Scan','GDPR Artifact Trace','CCPA Scope Leak','PII in Log Streams','Unencrypted S3 PII','Residual Auth Tokens'] },
+  { label: 'Network',         signals: ['Inter-AZ Transfer Leak','NAT Gateway Overcharge','VPN Tunnel Idle','CDN Redundancy Waste','Data Egress Anomaly','Load Balancer Orphan','IPv6 Transition Cost','Peering Drift'] },
+  { label: 'Database',        signals: ['RDS Multi-AZ Idle','Aurora Serverless Spike','DynamoDB On-Demand Leak','ElastiCache Overalloc','Redshift Underused','MongoDB Atlas Zombie','Snowflake Credit Burn','BigQuery Slot Waste'] },
+  { label: 'AI/ML Pipelines', signals: ['SageMaker Endpoint Idle','Training Job Orphan','Feature Store Leak','MLflow Artifact Stale','Vertex AI Zombie','Batch Inference Drift','Embedding Cache Waste','Vector DB Overalloc'] },
+  { label: 'IAM & Auth',      signals: ['Root Credential Risk','Stale IAM Roles','Overpermissioned SVC','MFA Gap Detected','Cross-Account Leakage','OAuth Token Orphan','Service Mesh Auth Drift','RBAC Policy Bloat'] },
+  { label: 'Observability',   signals: ['CloudWatch Log Volume','Datadog Zombie Metrics','Trace Retention Overrun','Alert Noise Ratio','Dashboard Orphan Count','Span Sampling Waste','Metric Cardinality Leak','Logging Pipeline Drift'] },
+];
+
+/* ── PHASE 1: Input ───────────────────────────────────────── */
+function InputPhase({ onSubmit, defaults }) {
+  const [company, setCompany] = useState(defaults.company);
+  const [spend, setSpend]     = useState(defaults.spend);
+  const [series, setSeries]   = useState(defaults.series);
+  const [err, setErr]         = useState('');
+
+  const pct = ((spend - 5000) / 95000) * 100;
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (!company.trim()) { setErr('Company name is required.'); return; }
+    if (!series) { setErr('Please select a funding series.'); return; }
+    setErr('');
+    onSubmit(company.trim(), spend, series);
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--slate-950)' }} className="grid-bg">
+      {/* Header */}
+      <header className="no-print" style={{ padding: '28px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <AquireLogo height={46} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--emerald-500)', animation: 'pulse 2s infinite' }}></div>
+          <span style={{ fontSize: 12, color: 'var(--slate-400)', fontFamily: 'var(--font-mono)', letterSpacing: '0.05em' }}>LIVE DIAGNOSTIC ENGINE</span>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
+        <div style={{ width: '100%', maxWidth: 560 }} className="fade-in">
+
+          {/* Badge */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 18px', borderRadius: 99, background: 'rgba(53,223,231,0.06)', border: '1px solid rgba(94,206,206,0.25)', fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--blue-300)', letterSpacing: '0.1em' }}>
+              <span style={{ color: 'var(--blue-400)', fontSize: 13 }}>✦</span>
+              AI INFRASTRUCTURE SCANNER · v4.1
+            </div>
+          </div>
+
+          <h1 style={{ fontSize: 'clamp(34px,5vw,54px)', fontWeight: 600, fontFamily: 'var(--font-display)', textAlign: 'center', lineHeight: 1.1, letterSpacing: '-0.01em', marginBottom: 16 }}>
+            The <em className="shimmer-text" style={{ fontStyle: 'italic' }}>Zombie</em> Estimator
+          </h1>
+          <p style={{ textAlign: 'center', color: 'var(--slate-400)', fontSize: 15, lineHeight: 1.75, maxWidth: 440, margin: '0 auto 40px', fontFamily: 'var(--font-sans)', fontWeight: 300 }}>
+            Uncover the hidden infrastructure waste bleeding your cloud budget. Powered by 10,000+ metadata signals across storage, compute, and compliance layers.
+          </p>
+
+          {/* Form Card */}
+          <form onSubmit={handleSubmit} style={{ background: 'var(--slate-900)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 20, padding: '36px', display: 'flex', flexDirection: 'column', gap: 28 }} className="card-glow">
+
+            {/* Company */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <label style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--slate-400)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Company Name</label>
+              <input
+                type="text"
+                value={company}
+                onChange={e => setCompany(e.target.value)}
+                placeholder="e.g. Acme Corp"
+                style={{ background: 'var(--slate-800)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '14px 16px', fontSize: 15, color: 'var(--slate-200)', fontFamily: 'var(--font-sans)', outline: 'none', transition: 'border-color 0.2s' }}
+                onFocus={e => e.target.style.borderColor = 'rgba(53,223,231,0.5)'}
+                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+              />
+            </div>
+
+            {/* Spend Slider */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <label style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--slate-400)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Monthly Cloud Spend</label>
+                <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--blue-400)', fontFamily: 'var(--font-mono)', letterSpacing: '-0.02em' }}>
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(spend)}
+                </span>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', top: '50%', left: 0, height: 6, width: `${pct}%`, background: 'linear-gradient(90deg, var(--blue-600), var(--blue-400))', borderRadius: 3, transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 1 }}></div>
+                <input type="range" min="5000" max="100000" step="1000" value={spend} onChange={e => setSpend(Number(e.target.value))} style={{ position: 'relative', zIndex: 2 }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--slate-600)', fontFamily: 'var(--font-mono)' }}>
+                <span>$5k / mo</span><span>$100k / mo</span>
+              </div>
+            </div>
+
+            {/* Series Selector */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <label style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--slate-400)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Funding Series</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {['B', 'C'].map(s => (
+                  <button key={s} type="button" onClick={() => setSeries(s)} style={{
+                    padding: '16px', borderRadius: 12,
+                    background: series === s ? 'rgba(53,223,231,0.1)' : 'var(--slate-800)',
+                    border: series === s ? '1px solid rgba(59,130,246,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                    color: series === s ? 'var(--blue-400)' : 'var(--slate-400)',
+                    cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left',
+                  }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-mono)', marginBottom: 4 }}>Series {s}</div>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>{s === 'B' ? '~18% avg waste' : '~24% avg waste'}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {err && (
+              <div style={{ fontSize: 13, color: 'var(--red-400)', padding: '10px 14px', background: 'rgba(239,68,68,0.08)', borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)' }}>
+                {err}
+              </div>
+            )}
+
+            <button type="submit" style={{
+              padding: '16px', borderRadius: 12, border: 'none', cursor: 'pointer',
+              fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em',
+              background: 'linear-gradient(135deg, #1b3d76, #5ecece)',
+              color: 'white', animation: 'ripple 2.5s infinite',
+              boxShadow: '0 0 0 0 rgba(53,223,231,0.3)', transition: 'opacity 0.2s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >
+              ⚡ Run Infrastructure Scan
+            </button>
+
+            <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--slate-600)', lineHeight: 1.5 }}>
+              No credentials required · Estimate only · Takes ~3 seconds
+            </p>
+          </form>
+
+          {/* Trust signals */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 28, marginTop: 28, flexWrap: 'wrap' }}>
+            {['10,247 Signals Analyzed', 'AWS · GCP · Azure', 'SOC 2 Aligned'].map(t => (
+              <span key={t} style={{ fontSize: 12, color: 'var(--slate-600)', fontFamily: 'var(--font-mono)' }}>{t}</span>
+            ))}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+/* ── PHASE 2: Scanning ───────────────────────────────────── */
+function ScanPhase({ company, onComplete }) {
+  const [count, setCount]       = useState(0);
+  const [logLines, setLogLines] = useState([]);
+  const [progress, setProgress] = useState(0);
+  const logRef                  = useRef(null);
+
+  const TARGET   = 10247;
+  const DURATION = 3000;
+
+  useEffect(() => {
+    const start = Date.now();
+    let frame;
+
+    function tick() {
+      const elapsed = Date.now() - start;
+      const t = Math.min(elapsed / DURATION, 1);
+      const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+      setCount(Math.round(eased * TARGET));
+      setProgress(t * 100);
+
+      if (Math.random() < 0.18) {
+        const cat = SIGNAL_CATEGORIES[Math.floor(t * SIGNAL_CATEGORIES.length * 1.2) % SIGNAL_CATEGORIES.length];
+        const sig = cat.signals[Math.floor(Math.random() * cat.signals.length)];
+        const cost = (Math.random() * 4200 + 80).toFixed(2);
+        const severity = Math.random() > 0.6 ? '⚠' : '✓';
+        setLogLines(prev => [...prev.slice(-18), { cat: cat.label, sig, cost, severity, id: Date.now() + Math.random() }]);
+      }
+
+      if (t < 1) {
+        frame = requestAnimationFrame(tick);
+      } else {
+        setTimeout(onComplete, 400);
+      }
+    }
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+  }, [logLines]);
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--slate-950)', alignItems: 'center', justifyContent: 'center', padding: 20 }} className="grid-bg">
+      <div style={{ width: '100%', maxWidth: 660 }}>
+
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 36 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--blue-500)', animation: 'pulse 0.8s infinite' }}></div>
+            <span style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--blue-400)', letterSpacing: '0.1em' }}>AI INFRASTRUCTURE SCAN · {company.toUpperCase()}</span>
+          </div>
+          <div style={{ fontSize: 'clamp(40px,8vw,72px)', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--blue-400)', letterSpacing: '-0.04em', lineHeight: 1 }}>
+            {count.toLocaleString()}
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--slate-500)', fontFamily: 'var(--font-mono)', marginTop: 6, letterSpacing: '0.06em' }}>SIGNALS ANALYZED</div>
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ height: 4, background: 'var(--slate-800)', borderRadius: 2, marginBottom: 28, overflow: 'hidden' }}>
+          <div style={{
+            height: '100%', width: `${progress}%`,
+            background: 'linear-gradient(90deg, var(--blue-600), var(--blue-400))',
+            borderRadius: 2, transition: 'width 0.05s linear',
+            boxShadow: '0 0 12px rgba(53,223,231,0.5)',
+          }}></div>
+        </div>
+
+        {/* Log terminal */}
+        <div ref={logRef} style={{
+          background: 'var(--slate-900)', border: '1px solid rgba(53,223,231,0.1)',
+          borderRadius: 16, padding: '20px', height: 280,
+          overflowY: 'hidden', fontFamily: 'var(--font-mono)', fontSize: 11.5,
+          display: 'flex', flexDirection: 'column', gap: 5,
+          position: 'relative',
+        }} className="card-glow">
+          {/* scan line */}
+          <div style={{
+            position: 'absolute', left: 0, right: 0, height: 32,
+            background: 'linear-gradient(180deg, transparent, rgba(53,223,231,0.05), transparent)',
+            animation: 'scanLine 1.2s linear infinite', pointerEvents: 'none', zIndex: 2,
+          }}></div>
+
+          {logLines.map((line, i) => (
+            <div key={line.id} style={{
+              display: 'flex', gap: 10, alignItems: 'baseline',
+              opacity: Math.max(0.3, i / logLines.length),
+              animation: 'slideUp 0.2s ease forwards',
+            }}>
+              <span style={{ color: line.severity === '⚠' ? 'var(--amber-400)' : 'var(--emerald-500)', minWidth: 12 }}>{line.severity}</span>
+              <span style={{ color: 'var(--slate-500)', minWidth: 90 }}>[{line.cat}]</span>
+              <span style={{ color: 'var(--slate-300)', flex: 1 }}>{line.sig}</span>
+              <span style={{ color: line.severity === '⚠' ? 'var(--amber-400)' : 'var(--slate-600)', minWidth: 80, textAlign: 'right' }}>
+                {line.severity === '⚠' ? `-$${line.cost}` : 'CLEAN'}
+              </span>
+            </div>
+          ))}
+          {logLines.length === 0 && (
+            <div style={{ color: 'var(--slate-600)' }}>Initializing scan engine...</div>
+          )}
+        </div>
+
+        {/* Category pills */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 20 }}>
+          {SIGNAL_CATEGORIES.map((cat, i) => {
+            const active = Math.floor((progress / 100) * SIGNAL_CATEGORIES.length * 1.2) % SIGNAL_CATEGORIES.length === i;
+            return (
+              <div key={cat.label} style={{
+                padding: '5px 12px', borderRadius: 99, fontSize: 11, fontFamily: 'var(--font-mono)',
+                background: active ? 'rgba(53,223,231,0.12)' : 'var(--slate-800)',
+                border: active ? '1px solid rgba(53,223,231,0.3)' : '1px solid transparent',
+                color: active ? 'var(--blue-300)' : 'var(--slate-600)',
+                transition: 'all 0.3s',
+              }}>{cat.label}</div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── PHASE 3: Report ─────────────────────────────────────── */
+function ReportPhase({ report, onReset, tweaks, setTweak }) {
+  const [leadStep, setLeadStep]   = useState('idle'); // idle | form | submitting | done
+  const [leadName, setLeadName]   = useState('');
+  const [leadEmail, setLeadEmail] = useState('');
+  const [urlCopied, setUrlCopied] = useState(false);
+  const [showTweaks, setShowTweaks] = useState(false);
+
+  const reportId = useRef(
+    report.company.replace(/\s+/g, '').toUpperCase().slice(0, 6) + '-' + Date.now().toString(36).toUpperCase().slice(-6)
+  ).current;
+
+  const r = report;
+
+  function copyShareUrl() {
+    navigator.clipboard.writeText(window.location.href).catch(() => {});
+    setUrlCopied(true);
+    setTimeout(() => setUrlCopied(false), 2200);
+  }
+
+  async function handleLeadSubmit(e) {
+    e.preventDefault();
+    if (!leadName.trim() || !leadEmail.trim()) return;
+    setLeadStep('submitting');
+    const hook = tweaks.webhookUrl;
+    if (hook) {
+      try {
+        await fetch(hook, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: leadName,
+            email: leadEmail,
+            company: r.company,
+            series: r.series,
+            monthly_spend: r.spend,
+            annual_waste: Math.round(r.totalWaste),
+            modernization_score: r.modernizationScore,
+            compliance_risk: r.complianceLevel,
+            report_id: reportId,
+            submitted_at: new Date().toISOString(),
+          }),
+        });
+      } catch (err) { console.warn('Webhook error:', err); }
+    }
+    setTimeout(() => setLeadStep('done'), 700);
+  }
+
+  const scoreColor      = r.modernizationScore >= 75 ? 'var(--green-400)' : r.modernizationScore >= 60 ? 'var(--amber-400)' : 'var(--red-400)';
+  const complianceColor  = r.complianceLevel === 'HIGH' ? 'var(--red-400)' : 'var(--amber-400)';
+  const complianceBg     = r.complianceLevel === 'HIGH' ? 'rgba(239,68,68,0.1)' : 'rgba(251,191,36,0.1)';
+  const complianceBorder = r.complianceLevel === 'HIGH' ? 'rgba(239,68,68,0.3)' : 'rgba(251,191,36,0.3)';
+
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--slate-950)', padding: '0 0 60px' }} className="grid-bg">
+
+      {/* Toolbar */}
+      <header className="no-print" style={{ padding: '20px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <AquireLogo height={53} />
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button onClick={() => setShowTweaks(v => !v)} style={{
+            padding: '9px 14px', borderRadius: 8, fontSize: 13, fontFamily: 'var(--font-sans)', fontWeight: 400,
+            background: showTweaks ? 'rgba(53,223,231,0.1)' : 'var(--slate-800)',
+            border: showTweaks ? '1px solid rgba(53,223,231,0.3)' : '1px solid rgba(255,255,255,0.08)',
+            color: showTweaks ? 'var(--cyan)' : 'var(--slate-500)',
+            cursor: 'pointer', transition: 'all 0.2s',
+          }}>⚙ Tweaks</button>
+          <button onClick={copyShareUrl} style={{
+            padding: '9px 18px', borderRadius: 8, fontSize: 13, fontFamily: 'var(--font-sans)', fontWeight: 400,
+            background: urlCopied ? 'rgba(53,223,231,0.1)' : 'var(--slate-800)',
+            border: urlCopied ? '1px solid rgba(53,223,231,0.35)' : '1px solid rgba(255,255,255,0.08)',
+            color: urlCopied ? 'var(--cyan)' : 'var(--slate-300)',
+            cursor: 'pointer', transition: 'all 0.2s',
+          }}>{urlCopied ? '✓ Link Copied' : 'Share Link ⧆'}</button>
+          <button onClick={() => window.print()} style={{
+            padding: '9px 18px', borderRadius: 8, fontSize: 13, fontFamily: 'var(--font-sans)', fontWeight: 400,
+            background: 'var(--slate-800)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--slate-300)',
+            cursor: 'pointer',
+          }}>Export PDF ↗</button>
+          <button onClick={onReset} style={{
+            padding: '9px 18px', borderRadius: 8, fontSize: 13, fontFamily: 'var(--font-sans)', fontWeight: 400,
+            background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--slate-500)',
+            cursor: 'pointer',
+          }}>← New Scan</button>
+        </div>
+      </header>
+
+      <div style={{ maxWidth: 780, margin: '0 auto', padding: '40px 20px' }}>
+
+        {/* Report header */}
+        <div style={{ marginBottom: 36, animation: 'slideUp 0.5s ease forwards' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <div style={{ padding: '4px 12px', borderRadius: 99, background: 'rgba(53,223,231,0.08)', border: '1px solid rgba(53,223,231,0.22)', fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--blue-400)', letterSpacing: '0.08em' }}>
+              FINANCIAL RECOVERY REPORT
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--slate-600)', fontFamily: 'var(--font-mono)' }}>
+              Generated {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
+          </div>
+          <h2 style={{ fontSize: 'clamp(24px,4vw,36px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.15 }}>
+            {r.company} — Series {r.series} Cloud Waste Analysis
+          </h2>
+          <p style={{ marginTop: 10, color: 'var(--slate-400)', fontSize: 15 }}>
+            Based on {fmt(r.spend)}/mo cloud spend · Analyzed via 10,247 infrastructure signals
+          </p>
+        </div>
+
+        {/* Headline metric */}
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(27,61,118,0.5), rgba(53,223,231,0.06))',
+          border: '1px solid rgba(53,223,231,0.18)', borderRadius: 20, padding: '32px 36px',
+          marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          flexWrap: 'wrap', gap: 20, animation: 'slideUp 0.6s 0.1s ease both',
+        }} className="card-glow-strong">
+          <div>
+            <div style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--blue-400)', letterSpacing: '0.1em', marginBottom: 8 }}>ESTIMATED ANNUAL RECOVERABLE WASTE</div>
+            <div style={{ fontSize: 'clamp(40px,7vw,64px)', fontWeight: 700, fontFamily: 'var(--font-mono)', letterSpacing: '-0.04em', color: 'white', lineHeight: 1 }}>
+              {fmt(r.totalWaste)}
+            </div>
+            <div style={{ marginTop: 8, fontSize: 14, color: 'var(--slate-400)' }}>
+              {(r.wasteRate * 100).toFixed(0)}% of {fmt(r.annualSpend)} annual spend identified as zombie infrastructure
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--slate-500)', letterSpacing: '0.06em', marginBottom: 6 }}>ZOMBIE RESOURCES</div>
+            <div style={{ fontSize: 36, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--red-400)' }}>{r.zombieCount.toLocaleString()}</div>
+            <div style={{ fontSize: 12, color: 'var(--slate-500)' }}>active waste sources</div>
+          </div>
+        </div>
+
+        {/* Row 1: Storage (wide) + Data Layer */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 16 }}>
+
+          {/* Storage Leak */}
+          <div style={{ background: 'var(--slate-900)', border: '1px solid rgba(240,120,120,0.2)', borderRadius: 16, padding: '24px', animation: 'slideUp 0.6s 0.15s ease both' }} className="card-glow print-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--slate-500)', letterSpacing: '0.08em', marginBottom: 10, textTransform: 'uppercase' }}>Annual Storage Leak</div>
+                <div style={{ fontSize: 34, fontWeight: 600, fontFamily: 'var(--font-display)', fontStyle: 'italic', color: 'var(--red-400)' }}>{fmt(r.storageLeak)}</div>
+                <div style={{ marginTop: 6, fontSize: 12, color: 'var(--slate-500)', fontWeight: 300 }}>45% of total recoverable waste · largest single category</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--slate-600)', letterSpacing: '0.06em', marginBottom: 4 }}>MONTHLY LEAK</div>
+                <div style={{ fontSize: 20, fontWeight: 600, fontFamily: 'var(--font-display)', fontStyle: 'italic', color: 'var(--red-400)', opacity: 0.7 }}>{fmt(r.storageLeak / 12)}</div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+              {[
+                { label: 'S3 / Blob Orphans', pct: 36 },
+                { label: 'Snapshot Drift',    pct: 28 },
+                { label: 'Cold Tier Waste',   pct: 22 },
+                { label: 'Version Overhead',  pct: 14 },
+              ].map(item => (
+                <div key={item.label} style={{ background: 'var(--slate-800)', borderRadius: 10, padding: '12px 14px' }}>
+                  <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--slate-500)', marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</div>
+                  <div style={{ height: 3, background: 'var(--slate-700)', borderRadius: 2, marginBottom: 7, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${item.pct}%`, background: 'var(--red-400)', borderRadius: 2, opacity: 0.8 }}></div>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-sans)', color: 'var(--red-400)' }}>{fmt(r.storageLeak * item.pct / 100)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Data Layer Waste */}
+          <div style={{ background: 'var(--slate-900)', border: '1px solid rgba(232,168,58,0.2)', borderRadius: 16, padding: '24px', animation: 'slideUp 0.6s 0.2s ease both' }} className="card-glow print-card">
+            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--slate-500)', letterSpacing: '0.08em', marginBottom: 12, textTransform: 'uppercase' }}>Data Layer Waste</div>
+            <div style={{ fontSize: 30, fontWeight: 600, fontFamily: 'var(--font-display)', fontStyle: 'italic', color: 'var(--amber-400)' }}>{fmt(r.dataLayerWaste)}</div>
+            <div style={{ marginTop: 10, height: 4, background: 'var(--slate-800)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: '32%', background: 'var(--amber-400)', borderRadius: 2 }}></div>
+            </div>
+            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[
+                { label: 'Schema Drift',       val: r.dataLayerWaste * 0.38 },
+                { label: 'Orphaned Pipelines', val: r.dataLayerWaste * 0.31 },
+                { label: 'Stale Datasets',     val: r.dataLayerWaste * 0.31 },
+              ].map(row => (
+                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                  <span style={{ color: 'var(--slate-500)', fontWeight: 300 }}>{row.label}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--amber-400)' }}>{fmt(row.val)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Modernization Score + Compliance */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+
+          {/* Data Modernization Score */}
+          <div style={{ background: 'var(--slate-900)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '24px', animation: 'slideUp 0.6s 0.25s ease both' }} className="card-glow print-card">
+            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--slate-500)', letterSpacing: '0.08em', marginBottom: 12, textTransform: 'uppercase' }}>Data Modernization Score</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                  <span style={{ fontSize: 36, fontWeight: 600, fontFamily: 'var(--font-display)', fontStyle: 'italic', color: scoreColor }}>{r.modernizationScore}</span>
+                  <span style={{ fontSize: 16, color: 'var(--slate-600)', fontFamily: 'var(--font-sans)' }}>/100</span>
+                </div>
+                <div style={{ marginTop: 8, fontSize: 12, color: 'var(--slate-500)', fontWeight: 300 }}>Industry avg: 61 · Target: 80+</div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <svg viewBox="0 0 120 66" style={{ width: '100%', height: 52 }}>
+                  <path d="M10 58 A 50 50 0 0 1 110 58" fill="none" stroke="var(--slate-800)" strokeWidth="8" strokeLinecap="round"/>
+                  <path d="M10 58 A 50 50 0 0 1 110 58" fill="none" stroke={scoreColor} strokeWidth="8" strokeLinecap="round"
+                    strokeDasharray={`${(r.modernizationScore / 100) * 157} 157`} opacity="0.9"/>
+                  <text x="60" y="52" textAnchor="middle" fontSize="11" fill="var(--slate-600)" fontFamily="var(--font-mono)">{r.modernizationScore}%</text>
+                </svg>
+              </div>
+            </div>
+            <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+              <div style={{ flex: 1, padding: '8px 10px', background: 'var(--slate-800)', borderRadius: 8, textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: 'var(--slate-600)', fontFamily: 'var(--font-mono)', marginBottom: 4 }}>SCHEMA RISK</div>
+                <div style={{ fontSize: 12, color: r.schemaRiskLevel === 'ELEVATED' ? 'var(--red-400)' : 'var(--amber-400)', fontFamily: 'var(--font-mono)', fontWeight: 500 }}>{r.schemaRiskLevel}</div>
+              </div>
+              <div style={{ flex: 1, padding: '8px 10px', background: 'var(--slate-800)', borderRadius: 8, textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: 'var(--slate-600)', fontFamily: 'var(--font-mono)', marginBottom: 4 }}>DATA DEBT</div>
+                <div style={{ fontSize: 12, color: 'var(--amber-400)', fontFamily: 'var(--font-mono)', fontWeight: 500 }}>{fmt(r.dataLayerWaste)}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Compliance Risk */}
+          <div style={{ background: complianceBg, border: `1px solid ${complianceBorder}`, borderRadius: 16, padding: '24px', animation: 'slideUp 0.6s 0.3s ease both' }} className="card-glow print-card">
+            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: complianceColor, letterSpacing: '0.08em', marginBottom: 12, textTransform: 'uppercase', opacity: 0.8 }}>Compliance Risk Rating</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: complianceColor, animation: 'pulse 1.5s infinite', flexShrink: 0 }}></div>
+              <span style={{ fontSize: 28, fontWeight: 600, fontFamily: 'var(--font-display)', fontStyle: 'italic', color: complianceColor }}>{r.complianceLevel}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {r.complianceLevel === 'HIGH' ? (
+                <>
+                  <RiskBadge label="PII Exposure Vectors" active />
+                  <RiskBadge label="SOC 2 Gaps Detected" active />
+                  <RiskBadge label="GDPR Artifact Residue" active />
+                </>
+              ) : (
+                <>
+                  <RiskBadge label="PII Exposure Vectors" active />
+                  <RiskBadge label="SOC 2 Gaps Detected" active={false} />
+                  <RiskBadge label="GDPR Artifact Residue" active={false} />
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Breakdown table */}
+        <div style={{ background: 'var(--slate-900)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '28px', marginBottom: 24, animation: 'slideUp 0.6s 0.35s ease both' }} className="card-glow print-card">
+          <div style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--slate-400)', letterSpacing: '0.06em', marginBottom: 20, textTransform: 'uppercase' }}>Waste Distribution Breakdown</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {[
+              { label: 'Storage Infrastructure',   pct: 45, val: r.storageLeak,    color: 'var(--red-400)' },
+              { label: 'Data Layer & Schema Debt',  pct: 32, val: r.dataLayerWaste, color: 'var(--amber-400)' },
+              { label: 'Compliance & Security',     pct: 16, val: r.complianceRisk, color: complianceColor },
+              { label: 'Network & Egress',          pct: 7,  val: r.networkDrift,   color: 'var(--blue-400)' },
+            ].map(row => (
+              <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ minWidth: 200, fontSize: 13, color: 'var(--slate-300)' }}>{row.label}</div>
+                <div style={{ flex: 1, height: 6, background: 'var(--slate-800)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${row.pct}%`, background: row.color, borderRadius: 3, opacity: 0.85 }}></div>
+                </div>
+                <div style={{ minWidth: 88, textAlign: 'right', fontSize: 13, fontFamily: 'var(--font-mono)', color: row.color, letterSpacing: '-0.01em' }}>{fmt(row.val)}</div>
+                <div style={{ minWidth: 32, textAlign: 'right', fontSize: 11, color: 'var(--slate-600)', fontFamily: 'var(--font-mono)' }}>{row.pct}%</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(27,61,118,0.4), rgba(53,223,231,0.06))',
+          border: '1px solid rgba(53,223,231,0.22)', borderRadius: 20, padding: '36px',
+          textAlign: 'center', animation: 'slideUp 0.6s 0.4s ease both',
+        }}>
+          {leadStep === 'idle' && (
+            <>
+              <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--cyan-soft)', letterSpacing: '0.1em', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 7, justifyContent: 'center' }}>
+                <span style={{ color: 'var(--cyan)' }}>✦</span> NEXT STEP
+              </div>
+              <h3 style={{ fontSize: 22, fontWeight: 600, fontFamily: 'var(--font-display)', letterSpacing: '-0.01em', marginBottom: 10 }}>
+                Request Your Free <em style={{ fontStyle: 'italic' }}>48-Hr Audit</em>
+              </h3>
+              <p style={{ color: 'var(--slate-400)', fontSize: 14, maxWidth: 480, margin: '0 auto 24px', lineHeight: 1.75, fontWeight: 300, fontFamily: 'var(--font-sans)' }}>
+                Our engineers run a credentialed deep-scan on your actual infrastructure and deliver a prioritized recovery roadmap within 48 hours. Pro-bono. No commitment.
+              </p>
+              <button onClick={() => setLeadStep('form')} style={{
+                padding: '15px 36px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 500,
+                background: 'linear-gradient(135deg, #1b3d76, #5ecece)',
+                color: 'white', boxShadow: '0 4px 24px rgba(53,223,231,0.2)',
+                transition: 'transform 0.15s, box-shadow 0.15s',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(53,223,231,0.28)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(53,223,231,0.2)'; }}
+              >
+                {tweaks.ctaLabel} ↗
+              </button>
+              <div style={{ marginTop: 14, fontSize: 12, color: 'var(--slate-600)', fontFamily: 'var(--font-sans)', fontWeight: 300 }}>
+                Pro-bono for qualified Series B/C companies · Read-only access · Results in 48h
+              </div>
+            </>
+          )}
+
+          {leadStep === 'form' && (
+            <form onSubmit={handleLeadSubmit} style={{ animation: 'fadeIn 0.3s ease', maxWidth: 420, margin: '0 auto' }}>
+              <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--cyan-soft)', letterSpacing: '0.1em', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 7, justifyContent: 'center' }}>
+                <span style={{ color: 'var(--cyan)' }}>✦</span> CONFIRM YOUR DETAILS
+              </div>
+              <h3 style={{ fontSize: 20, fontWeight: 600, fontFamily: 'var(--font-display)', marginBottom: 20 }}>
+                Where should we send the <em style={{ fontStyle: 'italic' }}>audit?</em>
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+                <input type="text" required placeholder="Your full name" value={leadName} onChange={e => setLeadName(e.target.value)}
+                  style={{ background: 'var(--slate-800)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '13px 16px', fontSize: 14, color: 'var(--slate-200)', fontFamily: 'var(--font-sans)', outline: 'none', width: '100%' }}
+                  onFocus={e => e.target.style.borderColor = 'rgba(53,223,231,0.45)'}
+                  onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'} />
+                <input type="email" required placeholder="Work email address" value={leadEmail} onChange={e => setLeadEmail(e.target.value)}
+                  style={{ background: 'var(--slate-800)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '13px 16px', fontSize: 14, color: 'var(--slate-200)', fontFamily: 'var(--font-sans)', outline: 'none', width: '100%' }}
+                  onFocus={e => e.target.style.borderColor = 'rgba(53,223,231,0.45)'}
+                  onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'} />
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button type="button" onClick={() => setLeadStep('idle')} style={{ padding: '13px 18px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--slate-500)', fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>←</button>
+                <button type="submit" style={{ flex: 1, padding: '13px', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 500, background: 'linear-gradient(135deg, #1b3d76, #5ecece)', color: 'white' }}>
+                  Submit Request ↗
+                </button>
+              </div>
+              <div style={{ marginTop: 12, fontSize: 11, color: 'var(--slate-600)', fontWeight: 300 }}>No spam. No invoice. Our team responds within 1 business day.</div>
+            </form>
+          )}
+
+          {leadStep === 'submitting' && (
+            <div style={{ animation: 'fadeIn 0.3s ease', padding: '20px 0' }}>
+              <div style={{ width: 32, height: 32, border: '2px solid rgba(53,223,231,0.2)', borderTopColor: 'var(--cyan)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }}></div>
+              <div style={{ fontSize: 14, color: 'var(--slate-400)', fontWeight: 300 }}>Submitting your request…</div>
+            </div>
+          )}
+
+          {leadStep === 'done' && (
+            <div style={{ animation: 'fadeIn 0.4s ease' }}>
+              <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(61,214,160,0.12)', border: '1px solid rgba(61,214,160,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 22, color: 'var(--green-400)' }}>✓</div>
+              <h3 style={{ fontSize: 22, fontWeight: 600, fontFamily: 'var(--font-display)', letterSpacing: '-0.01em', marginBottom: 10 }}>
+                Audit Request <em style={{ fontStyle: 'italic' }}>Received</em>
+              </h3>
+              <p style={{ color: 'var(--slate-400)', fontSize: 14, maxWidth: 440, margin: '0 auto 16px', fontWeight: 300, fontFamily: 'var(--font-sans)', lineHeight: 1.75 }}>
+                An Aquire AI engineer will reach out to <strong style={{ color: 'var(--slate-300)' }}>{leadEmail}</strong> within 1 business day. In the meantime, export this report for your team.
+              </p>
+              <button onClick={() => window.print()} style={{ padding: '11px 24px', borderRadius: 9, border: '1px solid rgba(53,223,231,0.25)', background: 'transparent', color: 'var(--cyan-soft)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
+                Export Report PDF ↗
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ marginTop: 32, textAlign: 'center', fontSize: 12, color: 'var(--slate-700)', fontFamily: 'var(--font-mono)', lineHeight: 1.8 }}>
+          AQUIRE AI · ZOMBIE ESTIMATOR v4.1 · REPORT ID: {reportId}<br/>
+          Estimates based on industry benchmarks. Actual savings may vary. Not a substitute for a credentialed audit.
+        </div>
+      </div>
+
+      {/* Tweaks panel */}
+      {showTweaks && <TweaksPanel tweaks={tweaks} setTweak={setTweak} onClose={() => setShowTweaks(false)} />}
+    </div>
+  );
+}
+
+function RiskBadge({ label, active }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+      <span style={{ color: active ? 'var(--red-400)' : 'var(--slate-600)' }}>{active ? '●' : '○'}</span>
+      <span style={{ color: active ? 'var(--slate-300)' : 'var(--slate-600)' }}>{label}</span>
+    </div>
+  );
+}
+
+/* ── TweaksPanel ──────────────────────────────────────────── */
+function TweaksPanel({ tweaks, setTweak, onClose }) {
+  return (
+    <div style={{
+      position: 'fixed', bottom: 24, right: 24, zIndex: 9999, width: 300,
+      background: 'var(--slate-800)', border: '1px solid rgba(53,223,231,0.25)',
+      borderRadius: 16, padding: '20px', boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+      fontFamily: 'var(--font-sans)', animation: 'fadeIn 0.25s ease',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <span style={{ color: 'var(--cyan)', fontSize: 11 }}>✦</span>
+          <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--slate-400)', letterSpacing: '0.1em' }}>TWEAKS</span>
+        </div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--slate-600)', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>×</button>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <label style={{ fontSize: 11, color: 'var(--slate-500)', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em' }}>SERIES B WASTE RATE</label>
+            <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--cyan-soft)', fontWeight: 500 }}>{tweaks.rateB}%</span>
+          </div>
+          <input type="range" min="5" max="35" step="1" value={tweaks.rateB}
+            onChange={e => setTweak('rateB', Number(e.target.value))} style={{ width: '100%' }} />
+        </div>
+
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <label style={{ fontSize: 11, color: 'var(--slate-500)', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em' }}>SERIES C WASTE RATE</label>
+            <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--cyan-soft)', fontWeight: 500 }}>{tweaks.rateC}%</span>
+          </div>
+          <input type="range" min="10" max="40" step="1" value={tweaks.rateC}
+            onChange={e => setTweak('rateC', Number(e.target.value))} style={{ width: '100%' }} />
+        </div>
+
+        <div>
+          <label style={{ fontSize: 11, color: 'var(--slate-500)', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>CTA BUTTON LABEL</label>
+          <input type="text" value={tweaks.ctaLabel} onChange={e => setTweak('ctaLabel', e.target.value)}
+            style={{ width: '100%', background: 'var(--slate-900)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: 'var(--slate-200)', fontFamily: 'var(--font-sans)', outline: 'none' }}
+            onFocus={e => e.target.style.borderColor = 'rgba(53,223,231,0.4)'}
+            onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'} />
+        </div>
+
+        <div>
+          <label style={{ fontSize: 11, color: 'var(--slate-500)', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>ZAPIER WEBHOOK URL</label>
+          <input type="url" value={tweaks.webhookUrl} onChange={e => setTweak('webhookUrl', e.target.value)}
+            placeholder="https://hooks.zapier.com/…"
+            style={{ width: '100%', background: 'var(--slate-900)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '9px 12px', fontSize: 12, color: 'var(--slate-200)', fontFamily: 'var(--font-mono)', outline: 'none' }}
+            onFocus={e => e.target.style.borderColor = 'rgba(53,223,231,0.4)'}
+            onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'} />
+          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--slate-600)', lineHeight: 1.5 }}>Lead data POSTs here on form submit.</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── AquireLogo ───────────────────────────────────────────── */
+function AquireLogo({ height = 38 }) {
+  const w = height * (260 / 80);
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={w} height={height} viewBox="0 0 260 80" aria-label="Aquire AI">
+      <defs>
+        <linearGradient id="aq-hg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#12316c"/>
+          <stop offset="55%" stopColor="#287992"/>
+          <stop offset="100%" stopColor="#35dfe7"/>
+        </linearGradient>
+        <linearGradient id="aq-wg" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#deeaf8"/>
+          <stop offset="100%" stopColor="#a8c8e8"/>
+        </linearGradient>
+      </defs>
+      <polygon points="38,10 62,24 62,52 38,66 14,52 14,24" fill="none" stroke="url(#aq-hg)" strokeWidth="1.5"/>
+      <line x1="38" y1="22" x2="29" y2="54" stroke="#35dfe7" strokeWidth="2" strokeLinecap="round"/>
+      <line x1="38" y1="22" x2="47" y2="54" stroke="#287992" strokeWidth="2" strokeLinecap="round"/>
+      <line x1="32" y1="43" x2="44" y2="43" stroke="#35dfe7" strokeWidth="1.5" strokeLinecap="round"/>
+      <line x1="62" y1="30" x2="74" y2="30" stroke="#287992" strokeWidth="1"/>
+      <circle cx="76" cy="30" r="2.5" fill="#35dfe7"/>
+      <line x1="78.5" y1="30" x2="88" y2="30" stroke="#1e4d6b" strokeWidth="1"/>
+      <line x1="62" y1="46" x2="70" y2="46" stroke="#12316c" strokeWidth="1"/>
+      <circle cx="72" cy="46" r="1.8" fill="#287992"/>
+      <text x="96" y="37" fontFamily="DM Sans,sans-serif" fontSize="22" fontWeight="500" fill="url(#aq-wg)" letterSpacing="-0.5">Aquire</text>
+      <text x="97" y="52" fontFamily="DM Sans,sans-serif" fontSize="8" fontWeight="300" fill="#3a6080" letterSpacing="2.5">AI • DATA • CLOUD</text>
+      <line x1="14" y1="72" x2="246" y2="72" stroke="#12316c" strokeWidth=".5"/>
+      <circle cx="14" cy="72" r="1.5" fill="#12316c"/>
+      <circle cx="246" cy="72" r="1.5" fill="#35dfe7"/>
+    </svg>
+  );
+}
+
+/* ── App root ─────────────────────────────────────────────── */
+function App() {
+  const urlDefaults = readURLParams();
+  const [phase, setPhase]           = useState('input');
+  const [formData, setFormData]     = useState(null);
+  const [report, setReport]         = useState(null);
+  const [tweaks, setTweaksState]    = useState(TWEAK_DEFAULTS);
+
+  function setTweak(key, val) {
+    setTweaksState(prev =>
+      typeof key === 'object' ? { ...prev, ...key } : { ...prev, [key]: val }
+    );
+  }
+
+  // Auto-advance if URL params are fully populated
+  useEffect(() => {
+    if (urlDefaults.company && urlDefaults.series) {
+      const r = calcReport(urlDefaults.company, urlDefaults.spend, urlDefaults.series, tweaks.rateB, tweaks.rateC);
+      setFormData({ company: urlDefaults.company, spend: urlDefaults.spend, series: urlDefaults.series });
+      setReport(r);
+      setPhase('scan');
+    }
+  }, []);
+
+  function handleInputSubmit(company, spend, series) {
+    const r = calcReport(company, spend, series, tweaks.rateB, tweaks.rateC);
+    setFormData({ company, spend, series });
+    setReport(r);
+    setPhase('scan');
+    const url = new URL(window.location.href);
+    url.searchParams.set('company', company);
+    url.searchParams.set('spend', spend);
+    url.searchParams.set('series', series);
+    window.history.replaceState({}, '', url);
+  }
+
+  function handleReset() {
+    setPhase('input');
+    setReport(null);
+    const url = new URL(window.location.href);
+    ['company', 'spend', 'series'].forEach(k => url.searchParams.delete(k));
+    window.history.replaceState({}, '', url);
+  }
+
+  return (
+    <>
+      {phase === 'input'  && <InputPhase onSubmit={handleInputSubmit} defaults={urlDefaults} />}
+      {phase === 'scan'   && <ScanPhase company={formData.company} onComplete={() => setPhase('report')} />}
+      {phase === 'report' && <ReportPhase report={report} onReset={handleReset} tweaks={tweaks} setTweak={setTweak} />}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
