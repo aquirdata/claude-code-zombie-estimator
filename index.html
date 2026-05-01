@@ -11,6 +11,7 @@
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -148,10 +149,21 @@
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
 
+// ── EmailJS config ─────────────────────────────────────────
+// 1. Sign up at https://www.emailjs.com (free — 200 emails/mo)
+// 2. Add an Email Service (Gmail, Outlook, etc.)
+// 3. Create two templates — see template variable names below
+// 4. Fill in the three IDs from your EmailJS dashboard
+const EMAILJS = {
+  publicKey:          'YOUR_PUBLIC_KEY',        // Account → API Keys
+  serviceId:          'YOUR_SERVICE_ID',         // Email Services → Service ID
+  notifyTemplateId:   'YOUR_NOTIFY_TEMPLATE_ID', // to Aquire — vars: lead_name, lead_email, company, series, monthly_spend, annual_waste, report_id
+  thankYouTemplateId: 'YOUR_THANKYOU_TEMPLATE_ID', // to submitter — vars: to_name, to_email, company, annual_waste
+};
+
 const TWEAK_DEFAULTS = {
   rateB: 18,
   rateC: 24,
-  webhookUrl: '',
   ctaLabel: 'Request 48-Hr Audit Verification',
 };
 
@@ -481,27 +493,36 @@ function ReportPhase({ report, onReset, tweaks, setTweak }) {
     e.preventDefault();
     if (!leadName.trim() || !leadEmail.trim()) return;
     setLeadStep('submitting');
-    const hook = tweaks.webhookUrl;
-    if (hook) {
-      try {
-        await fetch(hook, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: leadName,
-            email: leadEmail,
-            company: r.company,
-            series: r.series,
-            monthly_spend: r.spend,
-            annual_waste: Math.round(r.totalWaste),
-            modernization_score: r.modernizationScore,
-            compliance_risk: r.complianceLevel,
-            report_id: reportId,
-            submitted_at: new Date().toISOString(),
-          }),
-        });
-      } catch (err) { console.warn('Webhook error:', err); }
+
+    const commonParams = {
+      company:       r.company,
+      series:        r.series,
+      monthly_spend: fmt(r.spend),
+      annual_waste:  fmt(r.totalWaste),
+      report_id:     reportId,
+    };
+
+    try {
+      emailjs.init(EMAILJS.publicKey);
+
+      // Notification email → Aquire
+      await emailjs.send(EMAILJS.serviceId, EMAILJS.notifyTemplateId, {
+        ...commonParams,
+        to_email:   'medmond@getaquire.com',
+        lead_name:  leadName,
+        lead_email: leadEmail,
+      });
+
+      // Thank-you email → submitter
+      await emailjs.send(EMAILJS.serviceId, EMAILJS.thankYouTemplateId, {
+        ...commonParams,
+        to_name:  leadName,
+        to_email: leadEmail,
+      });
+    } catch (err) {
+      console.warn('EmailJS error:', err);
     }
+
     setTimeout(() => setLeadStep('done'), 700);
   }
 
@@ -877,15 +898,6 @@ function TweaksPanel({ tweaks, setTweak, onClose }) {
             onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'} />
         </div>
 
-        <div>
-          <label style={{ fontSize: 11, color: 'var(--slate-500)', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>ZAPIER WEBHOOK URL</label>
-          <input type="url" value={tweaks.webhookUrl} onChange={e => setTweak('webhookUrl', e.target.value)}
-            placeholder="https://hooks.zapier.com/…"
-            style={{ width: '100%', background: 'var(--slate-900)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '9px 12px', fontSize: 12, color: 'var(--slate-200)', fontFamily: 'var(--font-mono)', outline: 'none' }}
-            onFocus={e => e.target.style.borderColor = 'rgba(53,223,231,0.4)'}
-            onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'} />
-          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--slate-600)', lineHeight: 1.5 }}>Lead data POSTs here on form submit.</div>
-        </div>
       </div>
     </div>
   );
