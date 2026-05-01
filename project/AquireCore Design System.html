@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AquireCore — Design System</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* ── AquireCore Palette ───────────────── */
+      --aq-bg-0:     #07101f;   /* deepest bg */
+      --aq-bg-1:     #111e2a;   /* primary bg */
+      --aq-bg-2:     #172336;   /* surface */
+      --aq-bg-3:     #1d2d45;   /* elevated surface */
+      --aq-bg-4:     #243551;   /* hover surface */
+      --aq-navy-0:   #12316c;   /* deep navy */
+      --aq-navy-1:   #1b3d76;   /* mid navy */
+      --aq-text-0:   #deeaf8;   /* primary text (cold white) */
+      --aq-text-1:   #ccd8e8;   /* secondary text */
+      --aq-muted-0:  #6a8eb0;   /* muted text */
+      --aq-muted-1:  #7ea2bc;   /* muted alt */
+      --aq-cyan-0:   #35dfe7;   /* accent cyan */
+      --aq-cyan-1:   #5ecece;   /* accent cyan soft */
+      /* ── Semantic ────────────────────────── */
+      --aq-danger:   #f07878;
+      --aq-warn:     #e8a83a;
+      --aq-success:  #3dd6a0;
+      --aq-info:     #5ecece;
+      /* ── Type ────────────────────────────── */
+      --aq-font-display: 'Playfair Display', Georgia, serif;
+      --aq-font-sans:    'DM Sans', sans-serif;
+      --aq-font-mono:    'DM Mono', monospace;
+      /* ── Radius ──────────────────────────── */
+      --aq-r-sm:  8px;
+      --aq-r-md:  12px;
+      --aq-r-lg:  16px;
+      --aq-r-xl:  20px;
+      --aq-r-pill: 99px;
+    }
+
+    html, body { background: var(--aq-bg-0); color: var(--aq-text-0); font-family: var(--aq-font-sans); min-height: 100%; }
+    #root { padding-bottom: 80px; }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--aq-bg-1); }
+    ::-webkit-scrollbar-thumb { background: var(--aq-bg-4); border-radius: 3px; }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { animation: fadeUp 0.5s ease forwards; }
+
+    /* Grid bg */
+    .grid-bg {
+      background-image:
+        linear-gradient(rgba(53,223,231,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(53,223,231,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState } = React;
+
+/* ── tiny copy-to-clipboard hook ──────────────────────── */
+function useCopy() {
+  const [copied, setCopied] = useState(null);
+  function copy(val) {
+    navigator.clipboard.writeText(val).catch(() => {});
+    setCopied(val);
+    setTimeout(() => setCopied(null), 1800);
+  }
+  return [copied, copy];
+}
+
+/* ── Swatch ───────────────────────────────────────────── */
+function Swatch({ name, hex, textDark, role }) {
+  const [copied, copy] = useCopy();
+  return (
+    <button onClick={() => copy(hex)} title={`Copy ${hex}`} style={{
+      background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0,
+    }}>
+      <div style={{
+        width: '100%', aspectRatio: '4/3', borderRadius: 10,
+        background: hex, marginBottom: 10,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end',
+        padding: 8,
+        transition: 'transform 0.15s',
+      }}
+        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.03)'}
+        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+      >
+        {copied === hex && (
+          <span style={{ fontSize: 10, background: 'rgba(0,0,0,0.5)', color: '#fff', padding: '2px 6px', borderRadius: 4, fontFamily: 'var(--aq-font-mono)' }}>copied</span>
+        )}
+      </div>
+      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--aq-text-0)', fontFamily: 'var(--aq-font-sans)' }}>{name}</div>
+      <div style={{ fontSize: 11, color: 'var(--aq-muted-0)', fontFamily: 'var(--aq-font-mono)', marginTop: 2 }}>{hex}</div>
+      {role && <div style={{ fontSize: 10, color: 'var(--aq-cyan-1)', fontFamily: 'var(--aq-font-sans)', marginTop: 3, fontWeight: 300 }}>{role}</div>}
+    </button>
+  );
+}
+
+/* ── Section header ───────────────────────────────────── */
+function SectionHeader({ label, title, subtitle }) {
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{ color: 'var(--aq-cyan-0)', fontSize: 12 }}>✦</span>
+        <span style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</span>
+      </div>
+      <h2 style={{ fontSize: 26, fontWeight: 600, fontFamily: 'var(--aq-font-display)', letterSpacing: '-0.01em', lineHeight: 1.2 }}>{title}</h2>
+      {subtitle && <p style={{ marginTop: 8, color: 'var(--aq-muted-0)', fontSize: 14, fontWeight: 300, maxWidth: 500, lineHeight: 1.7 }}>{subtitle}</p>}
+    </div>
+  );
+}
+
+/* ── Divider ──────────────────────────────────────────── */
+function Divider() {
+  return <div style={{ height: 1, background: 'rgba(94,206,206,0.08)', margin: '56px 0' }}></div>;
+}
+
+/* ── Token row ────────────────────────────────────────── */
+function TokenRow({ name, value, desc }) {
+  const [copied, copy] = useCopy();
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 16px', borderRadius: 10, background: 'var(--aq-bg-2)', border: '1px solid rgba(94,206,206,0.07)', cursor: 'pointer', transition: 'border-color 0.2s' }}
+      onClick={() => copy(value)}
+      onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(94,206,206,0.18)'}
+      onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(94,206,206,0.07)'}
+    >
+      <code style={{ fontFamily: 'var(--aq-font-mono)', fontSize: 12, color: 'var(--aq-cyan-1)', minWidth: 200 }}>{name}</code>
+      <code style={{ fontFamily: 'var(--aq-font-mono)', fontSize: 12, color: 'var(--aq-text-1)', flex: 1 }}>{value}</code>
+      <span style={{ fontSize: 12, color: 'var(--aq-muted-0)', fontWeight: 300 }}>{desc}</span>
+      {copied === value && <span style={{ fontSize: 10, color: 'var(--aq-cyan-0)', fontFamily: 'var(--aq-font-mono)' }}>copied</span>}
+    </div>
+  );
+}
+
+/* ── Main App ─────────────────────────────────────────── */
+function App() {
+  return (
+    <div style={{ minHeight: '100vh' }} className="grid-bg">
+
+      {/* Masthead */}
+      <div style={{ borderBottom: '1px solid rgba(94,206,206,0.08)', padding: '32px 48px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+            <img src="aquire-logo-dark.svg" alt="Aquire AI" style={{ height: 36, objectFit: 'contain' }} />
+          </div>
+          <h1 style={{ fontSize: 'clamp(28px,4vw,44px)', fontWeight: 600, fontFamily: 'var(--aq-font-display)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+            Aquire<em style={{ fontStyle: 'italic', color: 'var(--aq-cyan-1)' }}>Core</em>
+          </h1>
+          <p style={{ marginTop: 8, color: 'var(--aq-muted-0)', fontSize: 14, fontWeight: 300 }}>Design System · v1.0 · aquiredata.com</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {['Colors', 'Typography', 'Tokens', 'Components'].map(t => (
+            <a key={t} href={`#${t.toLowerCase()}`} style={{
+              padding: '7px 16px', borderRadius: 8, fontSize: 13, textDecoration: 'none',
+              background: 'var(--aq-bg-2)', border: '1px solid rgba(94,206,206,0.1)',
+              color: 'var(--aq-muted-1)', fontFamily: 'var(--aq-font-sans)', fontWeight: 400,
+              transition: 'border-color 0.2s, color 0.2s',
+            }}
+              onMouseEnter={e => { e.target.style.borderColor = 'rgba(94,206,206,0.3)'; e.target.style.color = 'var(--aq-cyan-1)'; }}
+              onMouseLeave={e => { e.target.style.borderColor = 'rgba(94,206,206,0.1)'; e.target.style.color = 'var(--aq-muted-1)'; }}
+            >{t}</a>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '56px 32px' }}>
+
+        {/* ── COLORS ─────────────────────────────────────── */}
+        <div id="colors">
+          <SectionHeader label="01 — Foundations" title="Color Palette" subtitle="AquireCore's full palette. Click any swatch to copy its hex value." />
+
+          <div style={{ marginBottom: 36 }}>
+            <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', marginBottom: 16, textTransform: 'uppercase' }}>Backgrounds</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 16 }}>
+              <Swatch name="BG/0" hex="#07101f" role="Deepest bg" />
+              <Swatch name="BG/1" hex="#111e2a" role="Primary bg" />
+              <Swatch name="BG/2" hex="#172336" role="Surface" />
+              <Swatch name="BG/3" hex="#1d2d45" role="Elevated" />
+              <Swatch name="BG/4" hex="#243551" role="Hover" />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 36 }}>
+            <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', marginBottom: 16, textTransform: 'uppercase' }}>Text</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 16 }}>
+              <Swatch name="Text/0" hex="#deeaf8" role="Primary (cold white)" />
+              <Swatch name="Text/1" hex="#ccd8e8" role="Secondary" />
+              <Swatch name="Muted/0" hex="#6a8eb0" role="Labels, captions" />
+              <Swatch name="Muted/1" hex="#7ea2bc" role="Muted alt" />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 36 }}>
+            <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', marginBottom: 16, textTransform: 'uppercase' }}>Accent — Cyan</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 16 }}>
+              <Swatch name="Cyan/0" hex="#35dfe7" role="Accent (harsh)" />
+              <Swatch name="Cyan/1" hex="#5ecece" role="Accent (soft)" />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 36 }}>
+            <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', marginBottom: 16, textTransform: 'uppercase' }}>Navy</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 16 }}>
+              <Swatch name="Navy/0" hex="#12316c" role="Deep navy" />
+              <Swatch name="Navy/1" hex="#1b3d76" role="Mid navy" />
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', marginBottom: 16, textTransform: 'uppercase' }}>Semantic</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 16 }}>
+              <Swatch name="Danger" hex="#f07878" role="Error, High risk" />
+              <Swatch name="Warning" hex="#e8a83a" role="Medium risk" />
+              <Swatch name="Success" hex="#3dd6a0" role="Good, passing" />
+              <Swatch name="Info" hex="#5ecece" role="Informational" />
+            </div>
+          </div>
+        </div>
+
+        <Divider />
+
+        {/* ── TYPOGRAPHY ─────────────────────────────────── */}
+        <div id="typography">
+          <SectionHeader label="02 — Typography" title="Type System" subtitle="Three typefaces. Each with a defined role — never swap them." />
+
+          {/* Display */}
+          <div style={{ background: 'var(--aq-bg-2)', border: '1px solid rgba(94,206,206,0.08)', borderRadius: 16, padding: '32px', marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', marginBottom: 20, textTransform: 'uppercase' }}>Playfair Display — Headlines &amp; Display</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {[
+                { label: '700 / 54px', weight: 700, size: 54, text: 'Eliminate your Modernization Gap.' },
+                { label: '600 / 38px', weight: 600, size: 38, text: 'AI-Driven 48-Hour Health Scorecard' },
+                { label: '600 italic / 28px', weight: 600, size: 28, text: 'Cloud Waste Analysis', italic: true },
+                { label: '500 / 22px', weight: 500, size: 22, text: 'Infrastructure Integrity Report' },
+              ].map(s => (
+                <div key={s.label}>
+                  <div style={{ fontSize: 10, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', marginBottom: 6 }}>{s.label}</div>
+                  <div style={{ fontFamily: 'var(--aq-font-display)', fontSize: s.size, fontWeight: s.weight, fontStyle: s.italic ? 'italic' : 'normal', color: 'var(--aq-text-0)', lineHeight: 1.15, letterSpacing: '-0.01em' }}>{s.text}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Sans */}
+          <div style={{ background: 'var(--aq-bg-2)', border: '1px solid rgba(94,206,206,0.08)', borderRadius: 16, padding: '32px', marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', marginBottom: 20, textTransform: 'uppercase' }}>DM Sans — Body, UI, Labels</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {[
+                { label: '500 / 16px', weight: 500, size: 16, text: 'We are a high-velocity Data Engineering consultancy specializing in AI-Driven Cloud Cost Recovery.' },
+                { label: '400 / 15px', weight: 400, size: 15, text: 'Our engineers analyze 10,000+ metadata signals to surface hidden infrastructure waste.' },
+                { label: '300 / 14px', weight: 300, size: 14, text: 'Pro-bono for qualified Series B/C companies · Results in 48h · Read-only access' },
+                { label: '300 / 12px', weight: 300, size: 12, text: 'No credentials required · Estimate only · ~3 seconds' },
+              ].map(s => (
+                <div key={s.label}>
+                  <div style={{ fontSize: 10, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', marginBottom: 5 }}>{s.label}</div>
+                  <div style={{ fontFamily: 'var(--aq-font-sans)', fontSize: s.size, fontWeight: s.weight, color: 'var(--aq-text-1)', lineHeight: 1.7 }}>{s.text}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Mono */}
+          <div style={{ background: 'var(--aq-bg-2)', border: '1px solid rgba(94,206,206,0.08)', borderRadius: 16, padding: '32px' }}>
+            <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', marginBottom: 20, textTransform: 'uppercase' }}>DM Mono — Data, Labels, Badges, Code</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {[
+                { label: '500 / 13px', weight: 500, size: 13, text: '$72,000 · ESTIMATED ANNUAL RECOVERABLE WASTE' },
+                { label: '400 / 12px', weight: 400, size: 12, text: 'AI INFRASTRUCTURE SCANNER · v4.1 · REPORT ID: ACME-3F9A2B' },
+                { label: '400 / 11px', weight: 400, size: 11, text: 'COMPLIANCE RISK RATING · COMPUTE EFFICIENCY · ZOMBIE RESOURCES', color: 'var(--aq-muted-0)' },
+              ].map(s => (
+                <div key={s.label}>
+                  <div style={{ fontSize: 10, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', marginBottom: 5 }}>{s.label}</div>
+                  <div style={{ fontFamily: 'var(--aq-font-mono)', fontSize: s.size, fontWeight: s.weight, color: s.color || 'var(--aq-cyan-1)', letterSpacing: '0.06em', lineHeight: 1.6 }}>{s.text}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <Divider />
+
+        {/* ── TOKENS ─────────────────────────────────────── */}
+        <div id="tokens">
+          <SectionHeader label="03 — Tokens" title="CSS Variables" subtitle="Copy any token to use it directly. Click a row to copy the variable name." />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[
+              { name: '--aq-bg-0',    value: '#07101f',  desc: 'Deepest background' },
+              { name: '--aq-bg-1',    value: '#111e2a',  desc: 'Primary background' },
+              { name: '--aq-bg-2',    value: '#172336',  desc: 'Card / surface' },
+              { name: '--aq-bg-3',    value: '#1d2d45',  desc: 'Elevated surface' },
+              { name: '--aq-bg-4',    value: '#243551',  desc: 'Hover state' },
+              { name: '--aq-navy-0',  value: '#12316c',  desc: 'Deep navy' },
+              { name: '--aq-navy-1',  value: '#1b3d76',  desc: 'Mid navy' },
+              { name: '--aq-text-0',  value: '#deeaf8',  desc: 'Primary text' },
+              { name: '--aq-text-1',  value: '#ccd8e8',  desc: 'Secondary text' },
+              { name: '--aq-muted-0', value: '#6a8eb0',  desc: 'Muted text' },
+              { name: '--aq-muted-1', value: '#7ea2bc',  desc: 'Muted alt' },
+              { name: '--aq-cyan-0',  value: '#35dfe7',  desc: 'Accent (harsh)' },
+              { name: '--aq-cyan-1',  value: '#5ecece',  desc: 'Accent (soft)' },
+              { name: '--aq-danger',  value: '#f07878',  desc: 'Error / high risk' },
+              { name: '--aq-warn',    value: '#e8a83a',  desc: 'Warning / medium' },
+              { name: '--aq-success', value: '#3dd6a0',  desc: 'Success / good' },
+              { name: '--aq-font-display', value: "'Playfair Display', Georgia, serif", desc: 'Headlines' },
+              { name: '--aq-font-sans',    value: "'DM Sans', sans-serif",              desc: 'Body / UI' },
+              { name: '--aq-font-mono',    value: "'DM Mono', monospace",               desc: 'Data / labels' },
+            ].map(t => <TokenRow key={t.name} {...t} />)}
+          </div>
+        </div>
+
+        <Divider />
+
+        {/* ── COMPONENTS ─────────────────────────────────── */}
+        <div id="components">
+          <SectionHeader label="04 — Components" title="UI Kit" subtitle="Core components built on the AquireCore palette." />
+
+          {/* Buttons */}
+          <div style={{ marginBottom: 40 }}>
+            <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', marginBottom: 20, textTransform: 'uppercase' }}>Buttons</div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              {/* Primary */}
+              <button style={{ padding: '13px 28px', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'var(--aq-font-sans)', fontSize: 14, fontWeight: 500, background: 'linear-gradient(135deg, #1b3d76, #5ecece)', color: '#fff' }}>
+                Primary Action ↗
+              </button>
+              {/* Secondary */}
+              <button style={{ padding: '12px 26px', borderRadius: 10, border: '1px solid rgba(94,206,206,0.25)', cursor: 'pointer', fontFamily: 'var(--aq-font-sans)', fontSize: 14, fontWeight: 400, background: 'transparent', color: 'var(--aq-cyan-1)' }}>
+                Secondary ↗
+              </button>
+              {/* Ghost */}
+              <button style={{ padding: '12px 26px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', fontFamily: 'var(--aq-font-sans)', fontSize: 14, fontWeight: 400, background: 'var(--aq-bg-2)', color: 'var(--aq-text-1)' }}>
+                Ghost
+              </button>
+              {/* Danger */}
+              <button style={{ padding: '12px 26px', borderRadius: 10, border: '1px solid rgba(240,120,120,0.3)', cursor: 'pointer', fontFamily: 'var(--aq-font-sans)', fontSize: 14, fontWeight: 400, background: 'rgba(240,120,120,0.08)', color: 'var(--aq-danger)' }}>
+                Destructive
+              </button>
+            </div>
+          </div>
+
+          {/* Badges */}
+          <div style={{ marginBottom: 40 }}>
+            <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', marginBottom: 20, textTransform: 'uppercase' }}>Badges &amp; Pills</div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+              {[
+                { label: '✦ LIVE SCAN', bg: 'rgba(53,223,231,0.08)', border: 'rgba(94,206,206,0.25)', color: 'var(--aq-cyan-1)' },
+                { label: 'HIGH RISK', bg: 'rgba(240,120,120,0.1)', border: 'rgba(240,120,120,0.3)', color: 'var(--aq-danger)' },
+                { label: 'MEDIUM', bg: 'rgba(232,168,58,0.1)', border: 'rgba(232,168,58,0.3)', color: 'var(--aq-warn)' },
+                { label: 'PASSING', bg: 'rgba(61,214,160,0.1)', border: 'rgba(61,214,160,0.25)', color: 'var(--aq-success)' },
+                { label: 'Series B', bg: 'var(--aq-bg-3)', border: 'rgba(255,255,255,0.08)', color: 'var(--aq-text-1)' },
+              ].map(b => (
+                <div key={b.label} style={{ padding: '5px 14px', borderRadius: 99, background: b.bg, border: `1px solid ${b.border}`, fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: b.color, letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>{b.label}</div>
+              ))}
+            </div>
+          </div>
+
+          {/* Cards */}
+          <div style={{ marginBottom: 40 }}>
+            <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', marginBottom: 20, textTransform: 'uppercase' }}>Cards</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+              {/* Standard card */}
+              <div style={{ background: 'var(--aq-bg-2)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '24px', boxShadow: '0 0 0 1px rgba(94,206,206,0.08), 0 20px 40px rgba(0,0,0,0.4)' }}>
+                <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', marginBottom: 12 }}>ANNUAL STORAGE LEAK</div>
+                <div style={{ fontSize: 28, fontWeight: 600, fontFamily: 'var(--aq-font-display)', fontStyle: 'italic', color: 'var(--aq-danger)' }}>$24,480</div>
+                <div style={{ marginTop: 10, height: 4, background: 'var(--aq-bg-3)', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: '34%', background: 'var(--aq-danger)', borderRadius: 2 }}></div>
+                </div>
+                <div style={{ marginTop: 8, fontSize: 12, color: 'var(--aq-muted-0)', fontWeight: 300 }}>Cold buckets · orphaned snapshots</div>
+              </div>
+              {/* Accent card */}
+              <div style={{ background: 'linear-gradient(135deg, rgba(27,61,118,0.4), rgba(53,223,231,0.06))', border: '1px solid rgba(94,206,206,0.2)', borderRadius: 16, padding: '24px', boxShadow: '0 0 0 1px rgba(94,206,206,0.12), 0 0 32px rgba(53,223,231,0.05), 0 20px 40px rgba(0,0,0,0.4)' }}>
+                <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-cyan-1)', letterSpacing: '0.08em', marginBottom: 12 }}>RECOVERABLE WASTE</div>
+                <div style={{ fontSize: 28, fontWeight: 600, fontFamily: 'var(--aq-font-display)', fontStyle: 'italic', color: 'white' }}>$72,000</div>
+                <div style={{ marginTop: 8, fontSize: 13, color: 'var(--aq-text-1)', fontWeight: 300 }}>24% of $300k annual spend</div>
+              </div>
+              {/* Risk card */}
+              <div style={{ background: 'rgba(240,120,120,0.06)', border: '1px solid rgba(240,120,120,0.2)', borderRadius: 16, padding: '24px' }}>
+                <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-danger)', letterSpacing: '0.08em', marginBottom: 12, opacity: 0.9 }}>COMPLIANCE RISK</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--aq-danger)' }}></div>
+                  <span style={{ fontSize: 24, fontWeight: 600, fontFamily: 'var(--aq-font-display)', fontStyle: 'italic', color: 'var(--aq-danger)' }}>HIGH</span>
+                </div>
+                <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {['PII Exposure Vectors', 'SOC 2 Gaps Detected', 'GDPR Artifact Residue'].map(l => (
+                    <div key={l} style={{ display: 'flex', gap: 8, fontSize: 12, color: 'var(--aq-text-1)', fontWeight: 300 }}>
+                      <span style={{ color: 'var(--aq-danger)' }}>●</span>{l}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Form elements */}
+          <div>
+            <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', marginBottom: 20, textTransform: 'uppercase' }}>Form Elements</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, maxWidth: 720 }}>
+              <div>
+                <label style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', display: 'block', marginBottom: 8 }}>TEXT INPUT</label>
+                <input type="text" placeholder="e.g. Acme Corp" style={{ width: '100%', background: 'var(--aq-bg-2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '13px 14px', fontSize: 14, color: 'var(--aq-text-0)', fontFamily: 'var(--aq-font-sans)', outline: 'none' }} readOnly />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', display: 'block', marginBottom: 8 }}>FOCUSED STATE</label>
+                <input type="text" defaultValue="Acme Corp" style={{ width: '100%', background: 'var(--aq-bg-2)', border: '1px solid rgba(94,206,206,0.5)', borderRadius: 10, padding: '13px 14px', fontSize: 14, color: 'var(--aq-text-0)', fontFamily: 'var(--aq-font-sans)', outline: 'none', boxShadow: '0 0 0 3px rgba(53,223,231,0.08)' }} readOnly />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <Divider />
+
+        {/* ── BRAND ──────────────────────────────────────── */}
+        <div id="brand">
+          <SectionHeader label="05 — Brand" title="Logo & Mark" subtitle="Two brand assets — the full wordmark for headers and the icon mark for favicons, avatars, and compact contexts." />
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            {/* Full wordmark — dark bg */}
+            <div style={{ background: 'var(--aq-bg-0)', border: '1px solid rgba(94,206,206,0.12)', borderRadius: 16, padding: '40px 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Full Wordmark — Dark</div>
+              <img src="aquire-logo-dark.svg" alt="Aquire AI full logo" style={{ height: 48, objectFit: 'contain', objectPosition: 'left' }} />
+              <div style={{ fontSize: 12, color: 'var(--aq-muted-0)', fontWeight: 300, lineHeight: 1.6 }}>
+                Primary logo for all dark-background contexts — app headers, reports, decks, email footers.
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ padding: '4px 12px', borderRadius: 6, background: 'var(--aq-bg-2)', border: '1px solid rgba(94,206,206,0.1)', fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)' }}>aquire-logo-dark.svg</div>
+                <div style={{ padding: '4px 12px', borderRadius: 6, background: 'var(--aq-bg-2)', border: '1px solid rgba(94,206,206,0.1)', fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: 'var(--aq-muted-0)' }}>520 × 160</div>
+              </div>
+            </div>
+
+            {/* Icon mark */}
+            <div style={{ background: '#f0f6fc', border: '1px solid rgba(18,49,108,0.15)', borderRadius: 16, padding: '40px 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: '#6a8eb0', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Icon Mark — Light</div>
+              <img src="aquire-icon.svg" alt="Aquire AI icon mark" style={{ height: 72, objectFit: 'contain', objectPosition: 'left' }} />
+              <div style={{ fontSize: 12, color: '#6a8eb0', fontWeight: 400, lineHeight: 1.6 }}>
+                Standalone mark for favicons, app icons, avatars, and anywhere the wordmark is too wide.
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ padding: '4px 12px', borderRadius: 6, background: 'rgba(18,49,108,0.06)', border: '1px solid rgba(18,49,108,0.12)', fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: '#6a8eb0' }}>aquire-icon.svg</div>
+                <div style={{ padding: '4px 12px', borderRadius: 6, background: 'rgba(18,49,108,0.06)', border: '1px solid rgba(18,49,108,0.12)', fontSize: 11, fontFamily: 'var(--aq-font-mono)', color: '#6a8eb0' }}>400 × 400</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Clearspace + usage note */}
+          <div style={{ background: 'var(--aq-bg-2)', border: '1px solid rgba(94,206,206,0.08)', borderRadius: 14, padding: '20px 24px', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            {[
+              { label: '✓ Do', items: ['Use full wordmark on dark navy backgrounds', 'Use icon mark in square/circular containers', 'Maintain clear space equal to the hexagon height on all sides'] },
+              { label: '✗ Don\'t', items: ['Place on mid-grey or ambiguous backgrounds', 'Stretch, rotate, or recolor the mark', 'Use icon mark as a substitute when space allows the wordmark'] },
+            ].map(col => (
+              <div key={col.label} style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: 12, fontFamily: 'var(--aq-font-mono)', color: col.label.startsWith('✓') ? 'var(--aq-success)' : 'var(--aq-danger)', marginBottom: 10, letterSpacing: '0.06em' }}>{col.label}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {col.items.map(item => (
+                    <div key={item} style={{ fontSize: 13, color: 'var(--aq-text-1)', fontWeight: 300, lineHeight: 1.5, display: 'flex', gap: 8 }}>
+                      <span style={{ color: col.label.startsWith('✓') ? 'var(--aq-success)' : 'var(--aq-danger)', flexShrink: 0 }}>{col.label.startsWith('✓') ? '→' : '→'}</span>
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Divider />
+        <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--aq-muted-0)', fontFamily: 'var(--aq-font-sans)', fontWeight: 300, lineHeight: 1.8 }}>
+          AquireCore Design System · v1.0 · © 2026 Aquire AI<br />
+          <span style={{ color: 'var(--aq-cyan-1)' }}>aquiredata.com</span>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+    <rect width="120" height="80" fill="#07101f"/>
+    <rect x="10" y="12" width="14" height="14" rx="3" fill="#35dfe7" opacity="0.2"/>
+    <rect x="10" y="12" width="14" height="14" rx="3" stroke="#5ecece" stroke-width="0.8" fill="none"/>
+    <rect x="28" y="14" width="60" height="4" rx="2" fill="#deeaf8" opacity="0.7"/>
+    <rect x="28" y="20" width="40" height="3" rx="1.5" fill="#6a8eb0" opacity="0.5"/>
+    <rect x="10" y="36" width="22" height="22" rx="4" fill="#172336" stroke="#35dfe7" stroke-width="0.6" stroke-opacity="0.4"/>
+    <rect x="36" y="36" width="22" height="22" rx="4" fill="#1d2d45" stroke="rgba(255,255,255,0.07)" stroke-width="0.6"/>
+    <rect x="62" y="36" width="22" height="22" rx="4" fill="rgba(240,120,120,0.15)" stroke="#f07878" stroke-width="0.6" stroke-opacity="0.4"/>
+    <rect x="88" y="36" width="22" height="22" rx="4" fill="rgba(232,168,58,0.1)" stroke="#e8a83a" stroke-width="0.6" stroke-opacity="0.4"/>
+  </svg>
+</template>
+</body>
+</html>
